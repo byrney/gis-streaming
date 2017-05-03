@@ -7,7 +7,7 @@ var wkx = require('wkx')
 var through = require('through')
 var db = pgp({});
 
-var SQL = "select * from ons_lsoa"
+var SQL = "select * from ons_lad"
 //
 // completely synchronous
 //
@@ -23,10 +23,10 @@ app.get('/sync', function (req, res) {
 // stream raw data from the database into the response
 //
 app.get('/streamraw', (req, res) => {
-    var qs = new QueryStream(SQL);
     res.set('Content-Type', 'text/plain');
-    db.stream(qs, stream => {
-        stream.pipe(JSONStream.stringify()).pipe(res);
+    var qs = new QueryStream(SQL);
+    db.stream(qs, rows => {
+        rows.pipe(JSONStream.stringify()).pipe(res);
     })
     .then(data => {
         res.end();
@@ -37,19 +37,19 @@ app.get('/streamraw', (req, res) => {
 // strip out the geom column as they pass (for perf comparison)
 //
 function stripGeom(){
-    return through(function write(data) {
-        delete data['geom']
-        this.queue(data)
+    return through(function write(row) {
+        delete row['geom']
+        this.queue(row)
     }, function end(){
         this.queue(null);
     });
 }
 
 app.get('/streamstrip', (req, res) => {
-    var qs = new QueryStream(SQL);  // no limit!
     res.set('Content-Type', 'text/plain');
-    db.stream(qs, stream => {
-        stream.pipe(stripGeom()).pipe(JSONStream.stringify()).pipe(res);
+    var qs = new QueryStream(SQL);  // no limit!
+    db.stream(qs, rows => {
+        rows.pipe(stripGeom()).pipe(JSONStream.stringify()).pipe(res);
     })
     .then(data => {
         res.end();
@@ -60,19 +60,19 @@ app.get('/streamstrip', (req, res) => {
 // convert the data as they pass into geojson
 //
 function convert(){
-    return through(function write(data) {
-        data['geom'] = wkx.Geometry.parse(new Buffer(data['geom'], 'hex')).toGeoJSON()
-        this.queue(data)
+    return through(function write(row) {
+        row['geom'] = wkx.Geometry.parse(new Buffer(row['geom'], 'hex')).toGeoJSON()
+        this.queue(row)
     }, function end(){
         this.queue(null);
     });
 }
 
 app.get('/streamjson', (req, res) => {
-    var qs = new QueryStream(SQL);
     res.set('Content-Type', 'text/plain');
-    db.stream(qs, stream => {
-        stream.pipe(convert()).pipe(JSONStream.stringify()).pipe(res);
+    var qs = new QueryStream(SQL);
+    db.stream(qs, rows => {
+        rows.pipe(convert()).pipe(JSONStream.stringify()).pipe(res);
     })
     .then(data => {
         res.end();
