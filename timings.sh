@@ -2,11 +2,17 @@ function perf {
    curl -o /dev/null -s -w "%{time_connect} + %{time_starttransfer} = %{time_total}\n" "$1"
 }
 
-echo "no streaming"
+echo "pg-promise no streaming"
 perf 'http://localhost:3000/sync'
-echo "strip out geom column"
+echo "pg-promise strip out geom column"
 perf 'http://localhost:3000/streamstrip'
-echo "raw geom column (wkb hex)"
+echo "pg-promise raw geom column (wkb hex)"
 perf 'http://localhost:3000/streamraw'
-echo "geo json"
+echo "pg-promise geo json"
 perf 'http://localhost:3000/streamjson'
+echo "pg-node no streaming"
+perf 'http://localhost:3000/pgsync'
+echo "pg-node streaming raw"
+perf 'http://localhost:3000/pgstream'
+echo "pg-node streaming stripped"
+perf 'http://localhost:3000/pgstreamstrip'

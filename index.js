@@ -6,6 +6,7 @@ var JSONStream = require('JSONStream');
 var wkx = require('wkx')
 var through = require('through')
 var db = pgp({});
+var pg = require('pg')
 
 var SQL = "select * from ons_lad"
 //
@@ -78,6 +79,71 @@ app.get('/streamjson', (req, res) => {
         res.end();
     })
 });
+
+//
+// Use node pg directly accumulate the rows and send at once
+//
+app.get('/pgsync', (req, res) => {
+    console.log('entry')
+    res.set('Content-Type', 'text/plain');
+    var client = new pg.Client()
+    client.connect();
+    var query = client.query(SQL);
+    var rows = []
+    query.on('row', row => {
+        rows += JSON.stringify(row);
+    });
+    query.on('end', results => {
+        console.log('end')
+        res.send(rows);
+    });
+});
+
+
+//
+// Use node pg directly send the rows as they arrive
+//
+app.get('/pgstream', (req, res) => {
+    console.log('entry')
+    res.set('Content-Type', 'text/plain');
+    var client = new pg.Client()
+    client.connect();
+    var query = client.query(SQL);
+    var count = 0;
+    query.on('row', row => {
+        res.write(count == 0 ? '[' : ',');
+        res.write(JSON.stringify(row));
+        count += 1;
+    });
+    query.on('end', results => {
+        res.end()
+    });
+});
+
+
+//
+// Use node pg directly send the rows as they arrive
+// remove the geoms as we go
+//
+app.get('/pgstreamstrip', (req, res) => {
+    console.log('entry')
+    res.set('Content-Type', 'text/plain');
+    var client = new pg.Client()
+    client.connect();
+    var query = client.query(SQL);
+    var count = 0;
+    query.on('row', row => {
+        delete row['geom']
+        res.write(count == 0 ? '[' : ',');
+        res.write(JSON.stringify(row));
+        count += 1;
+    });
+    query.on('end', results => {
+        res.end()
+    });
+});
+
+
 
 
 app.listen(3000, function () {
