@@ -16,3 +16,5 @@ echo "pg-node streaming raw"
 perf 'http://localhost:3000/pgstream'
 echo "pg-node streaming stripped"
 perf 'http://localhost:3000/pgstreamstrip'
+echo "pg-pool streaming stripped"
+perf 'http://localhost:3000/pgstreamstrip'

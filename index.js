@@ -143,6 +143,38 @@ app.get('/pgstreamstrip', (req, res) => {
     });
 });
 
+//
+// Use node pg with pooled connections directly send the rows as they arrive
+//
+//
+var Pool = require('pg-pool')
+var poolConfig = {max: 5, min: 1}
+var pool = new Pool(poolConfig);
+
+
+app.get('/pgpoolstream', (req, res) => {
+    res.set('Content-Type', 'text/plain');
+    pool.connect(function(err, client, release){        // get a connection from the pool
+        query = client.query(SQL);                      // run the query
+        var count = 0;
+        query.on('row', row => {                        // process the rows to json array
+            delete row['geom']
+            res.write(count == 0 ? '[\n' : ',\n');
+            res.write(JSON.stringify(row));
+            count += 1;
+        });
+        query.on('end', results => {
+            console.log('release')
+            res.write(']\n')                            // close the array
+            res.end()                                   // close the response
+            client.release();                                  // return the db connection
+        });
+    });
+});
+
+
+
+
 
 
 
